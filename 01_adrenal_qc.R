@@ -1,0 +1,52 @@
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(DoubletFinder)
+library(future)
+library(RColorBrewer)
+library(patchwork)
+set.seed(5)
+############SCT#########
+sample <-c('OM1','OM2','OM3','OM4','YM1','YM2','YM3')
+cellbender <- data.frame(matrix(nrow=0, ncol=3))
+colnames(cellbender) <- c("Sample", "Cell_number","Genes")
+afterqc <- data.frame(matrix(nrow=0, ncol=3))
+colnames(afterqc) <- c("Sample", "Cell_number","Genes")
+doublet.prop <- data.frame(matrix(nrow=0, ncol=3))
+colnames(doublet.prop) <- c("Sample", "Number","Doublet_prop")
+plan("multiprocess", workers = 40)
+options(future.globals.maxSize = 100000 * 1024^2)#100000MB~=100G
+setwd("/data/home/quj_lab/wangxuebao/01_results/01_adrenal/02_cellbender")
+for (i in 1:length(sample)){
+  # Load the adrenal dataset
+  tmp.data <- Read10X_h5(paste0("/data/home/quj_lab/wangxuebao/01_results/01_adrenal/02_cellbender/",sample[i],"_remove_background_raw_feature_bc_matrix_filtered.h5"), use.names = TRUE, unique.features = TRUE)
+  # Initialize the Seurat object with the raw (non-normalized data).
+  dim(tmp.data)
+  cellbendr.tmp <- data.frame(Sample=sample[i], Cell_number=ncol(tmp.data), Genes=nrow(tmp.data))
+  cellbender <-rbind(cellbender,cellbendr.tmp)
+  tmp <- CreateSeuratObject(counts = tmp.data, project = sample[i], min.cells = 3, min.features = 200)
+  MT<-c("^ND1$","^ND2$","^COX1$","^COX2$","^ATP8$","^ATP6$","^COX3$","^ND3$","^ND4L$","^ND4$","^ND5$","^ND6$","^CYTB$")
+  tmp[["percent.MT"]] <- PercentageFeatureSet(tmp, pattern = paste(MT,collapse = "|"))
+  VlnPlot(tmp, features = c("nFeature_RNA", "nCount_RNA", "percent.MT"), ncol = 3)
+  ggsave(paste0("/data/home/quj_lab/wangxuebao/01_results/01_adrenal/03_qc/",sample[i],"_before_plot1.pdf"),width = 10, height = 6)
+  tmp <- subset(tmp, subset = nFeature_RNA > 200 & nFeature_RNA < 6000 & percent.MT < 2.5)
+  pdf(paste0("/data/home/quj_lab/wangxuebao/01_results/01_adrenal/03_qc/", sample[i],"_before_plot2.pdf"),width = 10, height = 6)
+  p=VlnPlot(tmp, features = c("nFeature_RNA", "nCount_RNA", "percent.MT"), ncol = 3)
+  print(p)
+  dev.off()
+
+  
+  ## Pre-process Seurat object (standard) --------------------------------------------------------------------------------------
+  tmp <- SCTransform(tmp, vars.to.regress = "percent.MT", verbose = FALSE)
+  tmp <- RunPCA(tmp, verbose=F)
+  tmp <- RunUMAP(tmp, dims = 1:20)
+  tmp <- FindNeighbors(tmp, reduction = "pca", dims = 1:20)
+  tmp <- FindClusters(tmp, res=2.0)
+  tmp[["cluster"]] <- Idents(tmp)
+  saveRDS(tmp, file = paste0("/data/home/quj_lab/wangxuebao/01_results/01_adrenal/03_qc/", sample[i], "_before_qc.rds"))
+  afterqc.tmp <- data.frame(Sample=sample[i], Cell_number=ncol(tmp), Genes=nrow(tmp))
+  afterqc <-rbind(afterqc,afterqc.tmp)
+}
+write.table(cellbender,file ="/data/home/quj_lab/wangxuebao/01_results/01_adrenal/03_qc/cellbender.txt", sep = "\t" )
+write.table(afterqc,file ="/data/home/quj_lab/wangxuebao/01_results/01_adrenal/03_qc/after_qc.txt", sep = "\t" )
