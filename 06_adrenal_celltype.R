@@ -59,30 +59,23 @@ write.csv(adrenal@meta.data,"/dellstorage09/quj_lab/wangxuebao/01_results/01_adr
 adrenal <- readRDS(file = "/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/m_adrenal_celltype_final.rds")
 CT.col = c("ZG"='#F2CD5C',"Transitional cell"="#F8766D","ZF"="#C77CFF","ZR"= "#BA1C96", "Chromaffin cell"="#B05E27", 
 "Neuron"="#E3B7A0","FB"="#00BA38" ,"SMC"= "#00887d","EC"= "#c72e29","Adi"="#C1A3A3","TC"= "#016392", "Mac"="#76c0c1")
-MT<-c("^ND1$","^ND2$","^COX1$","^COX2$","^ATP8$","^ATP6$","^COX3$","^ND3$","^ND4L$","^ND4$","^ND5$","^ND6$","^CYTB$")
-  adrenal[["percent.MT"]] <- PercentageFeatureSet(adrenal, pattern = paste(MT,collapse = "|"))
   p1 <- VlnPlot(adrenal, features = c("nFeature_RNA", "nCount_RNA", "percent.MT"), ncol = 3,cols=CT.col)
-  ZR_ad <- subset(adrenal,celltype=="ZR")
-  Idents(ZR_ad) <- "age"
-  p2 <- VlnPlot(ZR_ad, features = c("nFeature_RNA", "nCount_RNA", "percent.MT"), ncol = 3,cols= c('#379F7C','#F3A15E'))
 pdf(paste0("/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/MT_per.pdf"),width = 10, height = 6)
 print(p1)
-print(p2)
 dev.off()
 
 ####markers###This step takes a little longer
 marker <- FindAllMarkers(adrenal)
 # Screen for unannotated genes in cynomolgus monkeys
-marker <- subset(marker,substr(gene,1,5) !=  "ENSMF" & p_val_adj<0.05 )
-write.csv(marker,"/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/top_marker_all.csv", row.names =FALSE)
-marker <- read.csv("/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/top_marker_all.csv")
-top30 <- marker %>% group_by(cluster) %>% top_n(n=30, wt=avg_log2FC)
-write.csv(top30,"/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/top30_gene.csv", row.names =FALSE)
-top50 <- marker %>% group_by(cluster) %>% top_n(n=50, wt=avg_log2FC)
-write.csv(top50,"/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/top50_gene.csv", row.names =FALSE)
+marker <- subset(marker, p_val_adj<0.05 )
+write.csv(marker,"/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/marker_all.csv", row.names =FALSE)
+marker <- read.csv("/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/marker_all.csv")
 
-top_58 <- subset(marker,p_val_adj<0.05 & avg_log2FC>0.58)
-write.csv(top_585,"/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/top_av0.585_gene.csv", row.names =FALSE)
+top_marker <- subset(marker,p_val_adj<0.05 & avg_log2FC>0.58)
+write.csv(top_marker,"/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/top_av0.58_gene.csv", row.names =FALSE)
+
+top50 <- top_marker %>% group_by(cluster) %>% top_n(n=50, wt=avg_log2FC)
+write.csv(top50,"/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/top50_gene.csv", row.names =FALSE)
 
 ###top_cprtex <- subset(top_1,cluster %in% c("ZG","ZF","ZR"))
 top50 <- read.csv("/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/top50_gene.csv")
@@ -118,7 +111,7 @@ cell.prop = cell.prop %>% group_by(celltype) %>% mutate(celltype.sum = sum(sampl
 cell.prop$prop = cell.prop$sample.prop / cell.prop$celltype.sum * 100
 
 write.csv(cell.prop,"/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/07_celltype/m_adrenal_cell_prop_all_final.csv")
-###绘制各个细胞类型和各个样本的的细胞比例
+###Plot the proportion of cells for each cell type and each sample
 p=ggplot(cell.prop, aes(celltype, prop, fill=cell.prop$sample)) +
   geom_bar(stat='identity', position = 'dodge', width=0.9) +
   #scale_y_continuous(expand = c(0,0.005)) +

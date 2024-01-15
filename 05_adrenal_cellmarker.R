@@ -9,14 +9,14 @@ library(SeuratData)
 library(patchwork)
 library(Rserve)
 set.seed(2)
-###??ȡ????
+###
 adrenal <- readRDS("/data/home/quj_lab/wangxuebao/01_results/01_adrenal/05_umap/m_adrenal_umap-final.rds")
 DefaultAssay(adrenal) <- "RNA"
 plan("multicore", workers = 28)
 options(future.globals.maxSize = 100000 * 1024^2)#100000MB~=100G
 adrenal <- NormalizeData(object =adrenal, normalization.method = "LogNormalize")
 pdf("/dellstorage09/quj_lab/wangxuebao/01_results/01_adrenal/05_umap/adrenal_fenxing_cortex-final.pdf", width=24,height=18)
-###casu
+###
 FeaturePlot(adrenal,raster=FALSE, features = c("RSPO3","GLI1","WNT4","SHH","SF1","DAX1"))
 VlnPlot(adrenal, features = c("RSPO3","GLI1","WNT4","SHH","SF1","DAX1"), pt.size = 0.5)
 ## ZG
